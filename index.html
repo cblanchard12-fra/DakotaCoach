@@ -734,9 +734,11 @@ input:focus, select:focus, textarea:focus {
     <div class="panel" style="border-top:4px solid var(--gold);">
       <div class="panel-title"><span class="panel-icon">💶</span> Grille tarifaire de base</div>
       <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">
-        Ces tarifs s'appliquent par défaut à tous les élèves. Vous pouvez les personnaliser par élève dans <strong>Coach → Élèves & Tarifs</strong>.
+        Tarifs appliqués pour chaque type de prestation.
       </p>
-      <div class="form-grid-3" style="margin-bottom:20px;">
+      <div id="tarifs-readonly-view"></div>
+      <div id="tarifs-coach-edit" style="display:none;">
+        <div class="form-grid-3" style="margin-bottom:20px;">
         <div class="form-group">
           <label class="form-label">Cours particulier</label>
           <div style="position:relative;">
@@ -760,14 +762,7 @@ input:focus, select:focus, textarea:focus {
         </div>
       </div>
       <div id="tarifs-base-preview"></div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-title"><span class="panel-icon">📋</span> Grille tarifaire par élève</div>
-      <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
-        Les tarifs en <span style="color:var(--forest);font-weight:700;">vert</span> sont les tarifs de base. Les tarifs en <span style="color:var(--earth);font-weight:700;">orange</span> sont personnalisés pour cet élève.
-      </p>
-      <div id="tarifs-eleves-grid"></div>
+      </div><!-- end tarifs-coach-edit -->
     </div>
   </div>
 
@@ -967,6 +962,7 @@ function checkPassword() {
     document.getElementById('coach-lock').textContent = '🔓';
     switchMainTab('coach');
     showToast('🎓 Bienvenue, Coach !');
+    renderTarifsView();
   } else {
     pwdAttempts++;
     const errEl = document.getElementById('pwd-error');
@@ -1781,8 +1777,7 @@ function saveTarifsBase() {
   state.tarifsBase = tarifs;
   try { localStorage.setItem('dakota_tarifs_base', JSON.stringify(tarifs)); } catch(e){}
   renderTarifsBasePreview();
-  renderTarifsElevesGrid();
-  renderEleveSlots(); // refresh tarifs in eleve view
+  renderEleveSlots();
 }
 
 function loadTarifsBase() {
@@ -1860,8 +1855,30 @@ function renderTarifsElevesGrid() {
 }
 
 function renderTarifsView() {
-  renderTarifsBasePreview();
-  renderTarifsElevesGrid();
+  const t = state.tarifsBase || {};
+  const types = [
+    { key:'Cours particulier', cls:'particulier', icon:'🐎' },
+    { key:'Cours collectif',   cls:'collectif',   icon:'👥' },
+    { key:'Coaching Concours', cls:'concours',    icon:'🏆' },
+  ];
+
+  // Vue lecture seule (élèves)
+  const readonlyEl = document.getElementById('tarifs-readonly-view');
+  readonlyEl.innerHTML = `<div class="tarif-preview-card">` +
+    types.map(i => {
+      const val = t[i.key];
+      const set = val && val > 0;
+      return `<div class="tarif-preview-item ${set?'set':''}">
+        <div class="tarif-preview-label">${i.icon} ${i.key}</div>
+        <div class="tarif-preview-amount ${!set?'zero':''}">${set ? val+' €' : '—'}</div>
+      </div>`;
+    }).join('') + `</div>`;
+
+  // Afficher ou masquer l'édition selon statut coach
+  const editEl = document.getElementById('tarifs-coach-edit');
+  editEl.style.display = coachUnlocked ? 'block' : 'none';
+
+  if(coachUnlocked) renderTarifsBasePreview();
 }
 
 // ═══════════════════ ÉLÈVES & TARIFS ═══════════════════
